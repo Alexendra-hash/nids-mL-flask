@@ -6,6 +6,7 @@ from sqlalchemy.engine import URL
 from datetime import datetime
 import joblib
 import numpy as np
+from flask_mail import Mail, Message
 
 app = Flask(__name__)
 
@@ -21,10 +22,17 @@ app.config["SQLALCHEMY_DATABASE_URI"] = URL.create(
 )
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'alexaobioha@gmail.com'
+app.config['MAIL_PASSWORD'] = 'lqff kovd hmcs ftvm'
+app.config['MAIL_DEFAULT_SENDER'] = 'alexaobioha@gmail.com'
 
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
+mail = Mail(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'warning'
@@ -231,6 +239,27 @@ def analyse():
                 result = 'ATTACK'
                 confidence = round(probability[0] * 100, 2)
                 alert = 'danger'
+
+                msg = Message(
+                    subject='🚨 Network Intrusion Alert',
+                    recipients=['alexaobioha@gmail.com']
+                )
+
+                msg.body = f"""
+NETWORK INTRUSION DETECTED
+
+Status: {result}
+Confidence: {confidence}%
+
+Time: {datetime.now()}
+
+Your Machine Learning Network Intrusion Detection System has detected suspicious network activity.
+
+Please log in to the dashboard immediately to investigate.
+"""
+
+                mail.send(msg)
+
             else:
                 result = 'NORMAL'
                 confidence = round(probability[1] * 100, 2)
@@ -270,6 +299,27 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
         print('Default admin created!')
+@app.route('/test-email')
+def test_email():
+    try:
+        msg = Message(
+            subject='NIDS Test Email',
+            recipients=['alexaobioha@gmail.com']
+        )
 
+        msg.body = """
+Congratulations!
+
+Your Machine Learning Network Intrusion Detection System
+has successfully sent its first email.
+
+This is a test email.
+"""
+
+        mail.send(msg)
+        return "Email sent successfully!"
+
+    except Exception as e:
+        return f"Error: {str(e)}"
 if __name__ == '__main__':
     app.run(debug=True)
