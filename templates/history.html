@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detection History - NIDS System</title>
+
+<style>
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Segoe UI',sans-serif;
+}
+
+body{
+background:#0F172A;
+color:white;
+}
+
+nav{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:20px 40px;
+background:#111827;
+}
+
+nav h2{
+color:#38BDF8;
+}
+
+nav a{
+color:white;
+text-decoration:none;
+margin-left:20px;
+}
+
+.container{
+width:95%;
+max-width:1200px;
+margin:auto;
+padding:30px;
+}
+
+.card{
+background:#1E293B;
+padding:25px;
+border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,.3);
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:20px;
+}
+
+table th{
+background:#2563EB;
+padding:12px;
+}
+
+table td{
+padding:12px;
+border-bottom:1px solid #374151;
+text-align:center;
+}
+
+.attack{
+color:#EF4444;
+font-weight:bold;
+}
+
+.normal{
+color:#22C55E;
+font-weight:bold;
+}
+
+.empty{
+text-align:center;
+padding:50px;
+font-size:18px;
+color:#CBD5E1;
+}
+</style>
+
+</head>
+
+<body>
+
+<nav>
+
+<h2>🛡 NIDS System</h2>
+
+<div>
+
+{% if current_user.role=='admin' %}
+
+<a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+
+{% else %}
+
+<a href="{{ url_for('dashboard') }}">Dashboard</a>
+
+{% endif %}
+
+<a href="{{ url_for('analyse') }}">Analyse</a>
+
+<a href="{{ url_for('logout') }}">Logout</a>
+
+</div>
+
+</nav>
+
+<div class="container">
+
+<div class="card">
+
+<h2>Detection History</h2>
+
+<br>
+
+{% if detections %}
+<table>
+
+<tr>
+{% if current_user.role=='admin' %}
+<th>User</th>
+{% endif %}
+
+<th>Result</th>
+<th>Confidence</th>
+<th>Source Bytes</th>
+<th>Destination Bytes</th>
+<th>Date</th>
+
+</tr>
+
+{% for d in detections %}
+
+<tr>
+
+{% if current_user.role=='admin' %}
+<td>{{ d.user.username }}</td>
+{% endif %}
+
+<td>
+
+{% if d.result=="ATTACK DETECTED" %}
+
+<span class="attack">
+🚨 {{ d.result }}
+</span>
+
+{% else %}
+
+<span class="normal">
+✅ {{ d.result }}
+</span>
+
+{% endif %}
+
+</td>
+
+<td>{{ d.confidence }}%</td>
+
+<td>{{ d.src_bytes }}</td>
+
+<td>{{ d.dst_bytes }}</td>
+
+<td>{{ d.timestamp.strftime('%d-%m-%Y %H:%M') }}</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+{% else %}
+
+<div class="empty">
+
+<h3>No detection history found.</h3>
+
+<br>
+
+<p>
+Run a network analysis first and your detections will appear here.
+</p>
+
+</div>
+
+{% endif %}
+</div>
+
+</div>
+
+<div class="footer">
+    <p>NIDS System | Priscillia Chika Inyamah | U22DLCS10477 | ABU Distance Learning Centre | 2026</p>
+    <p style="margin-top:5px;">
+        Supervisor: Dr. Abdulrazaq | Department of Computer Science
+    </p>
+</div>
+
+</body>
+</html>

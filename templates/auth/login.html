@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - NIDS System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #0F1B2D, #16213e, #0f3460); min-height: 100vh; display: flex; flex-direction: column; }
+        .navbar { background: rgba(0,0,0,0.4); padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(233,69,96,0.3); }
+        .navbar .logo { font-size: 22px; font-weight: bold; color: #E94560; }
+        .navbar .logo span { color: white; }
+        .nav-links a { color: #C8D8E8; text-decoration: none; margin-left: 20px; font-size: 14px; }
+        .nav-links a:hover { color: #E94560; }
+        .container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
+        .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 40px; width: 100%; max-width: 420px; }
+        .card-header { text-align: center; margin-bottom: 30px; }
+        .card-header .icon { font-size: 48px; margin-bottom: 10px; }
+        .card-header h2 { font-size: 26px; color: white; font-weight: 700; }
+        .card-header p { color: #8899AA; font-size: 14px; margin-top: 5px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; color: #C8D8E8; font-size: 13px; margin-bottom: 8px; font-weight: 500; }
+        .form-group input { width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 12px 15px; color: white; font-size: 14px; transition: border-color 0.3s; }
+        .form-group input:focus { outline: none; border-color: #E94560; }
+        .btn-submit { width: 100%; padding: 14px; background: linear-gradient(135deg, #E94560, #C62A47); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; letter-spacing: 0.5px; }
+        .btn-submit:hover { opacity: 0.9; }
+        .card-footer { text-align: center; margin-top: 20px; color: #8899AA; font-size: 14px; }
+        .card-footer a { color: #E94560; text-decoration: none; font-weight: 600; }
+        .flash-messages { padding: 0 0 15px; }
+        .alert { padding: 10px 15px; border-radius: 8px; margin-bottom: 8px; font-size: 13px; }
+        .alert-success { background: rgba(46,204,113,0.2); border: 1px solid #2ecc71; color: #2ecc71; }
+        .alert-danger { background: rgba(231,76,60,0.2); border: 1px solid #e74c3c; color: #e74c3c; }
+        .alert-warning { background: rgba(241,196,15,0.2); border: 1px solid #f1c40f; color: #f1c40f; }
+        .alert-info { background: rgba(52,152,219,0.2); border: 1px solid #3498db; color: #3498db; }
+        .divider { text-align: center; color: #8899AA; font-size: 13px; margin: 15px 0; position: relative; }
+        .divider::before, .divider::after { content: ''; position: absolute; top: 50%; width: 40%; height: 1px; background: rgba(255,255,255,0.1); }
+        .divider::before { left: 0; }
+        .divider::after { right: 0; }
+        .default-creds { background: rgba(52,152,219,0.1); border: 1px solid rgba(52,152,219,0.3); border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 12px; color: #3498db; }
+        .footer { background: rgba(0,0,0,0.3); padding: 15px; text-align: center; color: #8899AA; font-size: 12px; border-top: 1px solid rgba(255,255,255,0.05); }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">🛡 NIDS <span>System</span></div>
+        <div class="nav-links">
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('register') }}">Register</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <div class="icon">🔑</div>
+                <h2>Welcome Back</h2>
+                <p>Sign in to your NIDS account</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="default-creds">
+                💡 <strong>Default Admin:</strong> admin@nids.com / admin123
+            </div>
+
+            <form method="POST">
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" name="email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" placeholder="Enter your password" required>
+                </div>
+                <button type="submit" class="btn-submit">🔐 LOGIN</button>
+            </form>
+
+            <div class="divider">or</div>
+
+            <div class="card-footer">
+                Don't have an account? <a href="{{ url_for('register') }}">Register here</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        NIDS System | Priscillia Chika Inyamah | U22DLCS10477 | ABU Distance Learning Centre | 2026
+    </div>
+</body>
+</html>

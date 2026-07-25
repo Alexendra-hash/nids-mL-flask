@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analyse Traffic - NIDS System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #0F1B2D, #16213e, #0f3460); min-height: 100vh; color: white; }
+        .navbar { background: rgba(0,0,0,0.4); padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(233,69,96,0.3); }
+        .navbar .logo { font-size: 22px; font-weight: bold; color: #E94560; }
+        .navbar .logo span { color: white; }
+        .nav-links a { color: #C8D8E8; text-decoration: none; margin-left: 20px; font-size: 14px; }
+        .nav-links a:hover { color: #E94560; }
+        .nav-links .btn-logout { background: rgba(233,69,96,0.2); border: 1px solid #E94560; color: #E94560; padding: 6px 16px; border-radius: 6px; }
+        .container { max-width: 950px; margin: 0 auto; padding: 30px 20px; }
+        .page-header { margin-bottom: 25px; }
+        .page-header h1 { font-size: 26px; font-weight: 700; }
+        .page-header p { color: #8899AA; margin-top: 5px; font-size: 14px; }
+        .result-card { border-radius: 12px; padding: 30px; margin-bottom: 25px; text-align: center; animation: fadeIn 0.5s ease; }
+        .result-danger { background: linear-gradient(135deg, rgba(231,76,60,0.2), rgba(192,57,43,0.2)); border: 2px solid #e74c3c; }
+        .result-success { background: linear-gradient(135deg, rgba(46,204,113,0.2), rgba(39,174,96,0.2)); border: 2px solid #2ecc71; }
+        .result-icon { font-size: 55px; margin-bottom: 10px; }
+        .result-title { font-size: 30px; font-weight: bold; margin-bottom: 8px; }
+        .result-danger .result-title { color: #e74c3c; }
+        .result-success .result-title { color: #2ecc71; }
+        .result-confidence { font-size: 16px; color: #ddd; margin-bottom: 8px; }
+        .result-msg { font-size: 13px; }
+        .result-danger .result-msg { color: #e74c3c; }
+        .result-success .result-msg { color: #2ecc71; }
+        .saved-badge { background: rgba(52,152,219,0.2); border: 1px solid #3498db; color: #3498db; padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-top: 8px; display: inline-block; }
+        .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 25px; margin-bottom: 20px; }
+        .card h2 { font-size: 16px; color: #E94560; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
+        .sample-btns { display: flex; gap: 10px; margin-bottom: 5px; flex-wrap: wrap; }
+        .sample-btn { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .sample-btn:hover { background: rgba(255,255,255,0.15); }
+        .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-size: 11px; color: #8899AA; margin-bottom: 5px; }
+        .form-group input { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 8px 12px; color: white; font-size: 13px; }
+        .form-group input:focus { outline: none; border-color: #E94560; }
+        .btn-analyse { width: 100%; padding: 14px; background: linear-gradient(135deg, #E94560, #C62A47); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 20px; letter-spacing: 0.5px; }
+        .btn-analyse:hover { opacity: 0.9; }
+        .flash-messages { padding: 10px 40px; }
+        .alert { padding: 12px 20px; border-radius: 8px; margin-bottom: 10px; font-size: 14px; }
+        .alert-danger { background: rgba(231,76,60,0.2); border: 1px solid #e74c3c; color: #e74c3c; }
+        .footer { background: rgba(0,0,0,0.3); padding: 15px; text-align: center; color: #8899AA; font-size: 12px; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 40px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @media(max-width:768px){ .form-grid{ grid-template-columns: repeat(2,1fr); } }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">🛡 NIDS <span>System</span></div>
+        <div class="nav-links">
+            {% if current_user.role == 'admin' %}
+            <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('manage_users') }}">Manage Users</a>
+            {% else %}
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            {% endif %}
+            <a href="{{ url_for('analyse') }}">Analyse</a>
+            <a href="{{ url_for('history') }}">History</a>
+            <a href="{{ url_for('logout') }}" class="btn-logout">Logout</a>
+        </div>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="container">
+        <div class="page-header">
+            <h1>🔍 Analyse Network Traffic</h1>
+            <p>Enter 41 network traffic features below. Results are automatically saved to your history.</p>
+        </div>
+
+        {% if result %}
+        <div class="result-card result-{{ alert }}">
+            <div class="result-icon">{{ '🚨' if alert == 'danger' else '✅' }}</div>
+            <div class="result-title">{{ '⚠️ ATTACK DETECTED' if result == 'ATTACK' else '✅ NORMAL TRAFFIC' }}</div>
+            <div class="result-confidence">Confidence: {{ confidence }}%</div>
+            <div class="result-msg">
+                {{ 'Malicious network activity detected! Immediate action recommended.' if alert == 'danger' else 'Network traffic appears normal. No threats detected.' }}
+            </div>
+            <div class="saved-badge">💾 Result saved to your history</div>
+        </div>
+        {% endif %}
+
+        <div class="card">
+            <h2>⚡ Quick Test — Load Sample Data</h2>
+            <div class="sample-btns">
+                <button class="sample-btn" onclick="loadAttack()">🔴 Load Attack Sample (Neptune DoS)</button>
+                <button class="sample-btn" onclick="loadNormal()">🟢 Load Normal Sample (FTP Connection)</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📊 Network Traffic Features (41 Features)</h2>
+            <form method="POST">
+                <div class="form-grid">
+                    <div class="form-group"><label>1. Duration</label><input type="number" name="duration" id="duration" value="0" step="any"></div>
+                    <div class="form-group"><label>2. Protocol Type (0=icmp,1=tcp,2=udp)</label><input type="number" name="protocol_type" id="protocol_type" value="1" step="any"></div>
+                    <div class="form-group"><label>3. Service</label><input type="number" name="service" id="service" value="21" step="any"></div>
+                    <div class="form-group"><label>4. Flag</label><input type="number" name="flag" id="flag" value="9" step="any"></div>
+                    <div class="form-group"><label>5. Source Bytes ⭐</label><input type="number" name="src_bytes" id="src_bytes" value="491" step="any"></div>
+                    <div class="form-group"><label>6. Destination Bytes</label><input type="number" name="dst_bytes" id="dst_bytes" value="0" step="any"></div>
+                    <div class="form-group"><label>7. Land</label><input type="number" name="land" id="land" value="0" step="any"></div>
+                    <div class="form-group"><label>8. Wrong Fragment</label><input type="number" name="wrong_fragment" id="wrong_fragment" value="0" step="any"></div>
+                    <div class="form-group"><label>9. Urgent</label><input type="number" name="urgent" id="urgent" value="0" step="any"></div>
+                    <div class="form-group"><label>10. Hot</label><input type="number" name="hot" id="hot" value="0" step="any"></div>
+                    <div class="form-group"><label>11. Num Failed Logins</label><input type="number" name="num_failed_logins" id="num_failed_logins" value="0" step="any"></div>
+                    <div class="form-group"><label>12. Logged In</label><input type="number" name="logged_in" id="logged_in" value="0" step="any"></div>
+                    <div class="form-group"><label>13. Num Compromised</label><input type="number" name="num_compromised" id="num_compromised" value="0" step="any"></div>
+                    <div class="form-group"><label>14. Root Shell</label><input type="number" name="root_shell" id="root_shell" value="0" step="any"></div>
+                    <div class="form-group"><label>15. Su Attempted</label><input type="number" name="su_attempted" id="su_attempted" value="0" step="any"></div>
+                    <div class="form-group"><label>16. Num Root</label><input type="number" name="num_root" id="num_root" value="0" step="any"></div>
+                    <div class="form-group"><label>17. Num File Creations</label><input type="number" name="num_file_creations" id="num_file_creations" value="0" step="any"></div>
+                    <div class="form-group"><label>18. Num Shells</label><input type="number" name="num_shells" id="num_shells" value="0" step="any"></div>
+                    <div class="form-group"><label>19. Num Access Files</label><input type="number" name="num_access_files" id="num_access_files" value="0" step="any"></div>
+                    <div class="form-group"><label>20. Num Outbound Cmds</label><input type="number" name="num_outbound_cmds" id="num_outbound_cmds" value="0" step="any"></div>
+                    <div class="form-group"><label>21. Is Host Login</label><input type="number" name="is_host_login" id="is_host_login" value="0" step="any"></div>
+                    <div class="form-group"><label>22. Is Guest Login</label><input type="number" name="is_guest_login" id="is_guest_login" value="0" step="any"></div>
+                    <div class="form-group"><label>23. Count ⭐</label><input type="number" name="count" id="count" value="2" step="any"></div>
+                    <div class="form-group"><label>24. Srv Count</label><input type="number" name="srv_count" id="srv_count" value="2" step="any"></div>
+                    <div class="form-group"><label>25. Serror Rate ⭐</label><input type="number" name="serror_rate" id="serror_rate" value="0" step="any"></div>
+                    <div class="form-group"><label>26. Srv Serror Rate</label><input type="number" name="srv_serror_rate" id="srv_serror_rate" value="0" step="any"></div>
+                    <div class="form-group"><label>27. Rerror Rate</label><input type="number" name="rerror_rate" id="rerror_rate" value="0" step="any"></div>
+                    <div class="form-group"><label>28. Srv Rerror Rate</label><input type="number" name="srv_rerror_rate" id="srv_rerror_rate" value="0" step="any"></div>
+                    <div class="form-group"><label>29. Same Srv Rate</label><input type="number" name="same_srv_rate" id="same_srv_rate" value="1" step="any"></div>
+                    <div class="form-group"><label>30. Diff Srv Rate</label><input type="number" name="diff_srv_rate" id="diff_srv_rate" value="0" step="any"></div>
+                    <div class="form-group"><label>31. Srv Diff Host Rate</label><input type="number" name="srv_diff_host_rate" id="srv_diff_host_rate" value="0" step="any"></div>
+                    <div class="form-group"><label>32. Dst Host Count</label><input type="number" name="dst_host_count" id="dst_host_count" value="150" step="any"></div>
+                    <div class="form-group"><label>33. Dst Host Srv Count</label><input type="number" name="dst_host_srv_count" id="dst_host_srv_count" value="25" step="any"></div>
+                    <div class="form-group"><label>34. Dst Host Same Srv Rate</label><input type="number" name="dst_host_same_srv_rate" id="dst_host_same_srv_rate" value="0.17" step="any"></div>
+                    <div class="form-group"><label>35. Dst Host Diff Srv Rate</label><input type="number" name="dst_host_diff_srv_rate" id="dst_host_diff_srv_rate" value="0.03" step="any"></div>
+                    <div class="form-group"><label>36. Dst Host Same Src Port Rate</label><input type="number" name="dst_host_same_src_port_rate" id="dst_host_same_src_port_rate" value="0.17" step="any"></div>
+                    <div class="form-group"><label>37. Dst Host Srv Diff Host Rate</label><input type="number" name="dst_host_srv_diff_host_rate" id="dst_host_srv_diff_host_rate" value="0" step="any"></div>
+                    <div class="form-group"><label>38. Dst Host Serror Rate</label><input type="number" name="dst_host_serror_rate" id="dst_host_serror_rate" value="0" step="any"></div>
+                    <div class="form-group"><label>39. Dst Host Srv Serror Rate</label><input type="number" name="dst_host_srv_serror_rate" id="dst_host_srv_serror_rate" value="0" step="any"></div>
+                    <div class="form-group"><label>40. Dst Host Rerror Rate</label><input type="number" name="dst_host_rerror_rate" id="dst_host_rerror_rate" value="0.05" step="any"></div>
+                    <div class="form-group"><label>41. Dst Host Srv Rerror Rate</label><input type="number" name="dst_host_srv_rerror_rate" id="dst_host_srv_rerror_rate" value="0" step="any"></div>
+                </div>
+                <button type="submit" class="btn-analyse">🔍 ANALYSE TRAFFIC</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="footer">
+        NIDS System | Priscillia Chika Inyamah | U22DLCS10477 | ABU Distance Learning Centre | 2026
+    </div>
+
+    <script>
+    function loadAttack() {
+        var fields = {
+            'duration':0,'protocol_type':1,'service':21,'flag':5,
+            'src_bytes':0,'dst_bytes':0,'land':0,'wrong_fragment':0,
+            'urgent':0,'hot':0,'num_failed_logins':0,'logged_in':0,
+            'num_compromised':0,'root_shell':0,'su_attempted':0,
+            'num_root':0,'num_file_creations':0,'num_shells':0,
+            'num_access_files':0,'num_outbound_cmds':0,'is_host_login':0,
+            'is_guest_login':0,'count':511,'srv_count':511,
+            'serror_rate':1,'srv_serror_rate':1,'rerror_rate':0,
+            'srv_rerror_rate':0,'same_srv_rate':1,'diff_srv_rate':0,
+            'srv_diff_host_rate':0,'dst_host_count':255,'dst_host_srv_count':255,
+            'dst_host_same_srv_rate':1,'dst_host_diff_srv_rate':0,
+            'dst_host_same_src_port_rate':0,'dst_host_srv_diff_host_rate':0,
+            'dst_host_serror_rate':1,'dst_host_srv_serror_rate':1,
+            'dst_host_rerror_rate':0,'dst_host_srv_rerror_rate':0
+        };
+        for (var key in fields) {
+            var el = document.getElementById(key);
+            if (el) el.value = fields[key];
+        }
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+    function loadNormal() {
+        var fields = {
+            'duration':0,'protocol_type':1,'service':21,'flag':9,
+            'src_bytes':491,'dst_bytes':0,'land':0,'wrong_fragment':0,
+            'urgent':0,'hot':0,'num_failed_logins':0,'logged_in':0,
+            'num_compromised':0,'root_shell':0,'su_attempted':0,
+            'num_root':0,'num_file_creations':0,'num_shells':0,
+            'num_access_files':0,'num_outbound_cmds':0,'is_host_login':0,
+            'is_guest_login':0,'count':2,'srv_count':2,
+            'serror_rate':0,'srv_serror_rate':0,'rerror_rate':0,
+            'srv_rerror_rate':0,'same_srv_rate':1,'diff_srv_rate':0,
+            'srv_diff_host_rate':0,'dst_host_count':150,'dst_host_srv_count':25,
+            'dst_host_same_srv_rate':0.17,'dst_host_diff_srv_rate':0.03,
+            'dst_host_same_src_port_rate':0.17,'dst_host_srv_diff_host_rate':0,
+            'dst_host_serror_rate':0,'dst_host_srv_serror_rate':0,
+            'dst_host_rerror_rate':0.05,'dst_host_srv_rerror_rate':0
+        };
+        for (var key in fields) {
+            var el = document.getElementById(key);
+            if (el) el.value = fields[key];
+        }
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+</script>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NIDS - Network Intrusion Detection System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #0F1B2D, #16213e, #0f3460); min-height: 100vh; color: white; }
+        .navbar { background: rgba(0,0,0,0.4); padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(233,69,96,0.3); }
+        .navbar .logo { font-size: 22px; font-weight: bold; color: #E94560; }
+        .navbar .logo span { color: white; }
+        .nav-links a { color: #C8D8E8; text-decoration: none; margin-left: 20px; font-size: 14px; transition: color 0.3s; }
+        .nav-links a:hover { color: #E94560; }
+        .nav-links .btn-login { background: transparent; border: 1px solid #E94560; color: #E94560; padding: 8px 20px; border-radius: 6px; }
+        .nav-links .btn-register { background: #E94560; color: white; padding: 8px 20px; border-radius: 6px; margin-left: 10px; }
+        .hero { text-align: center; padding: 100px 20px 60px; }
+        .hero .badge { background: rgba(233,69,96,0.15); border: 1px solid rgba(233,69,96,0.3); color: #E94560; padding: 6px 18px; border-radius: 20px; font-size: 13px; display: inline-block; margin-bottom: 25px; }
+        .hero h1 { font-size: 48px; font-weight: 800; line-height: 1.2; margin-bottom: 20px; }
+        .hero h1 span { color: #E94560; }
+        .hero p { font-size: 18px; color: #8899AA; max-width: 600px; margin: 0 auto 40px; line-height: 1.7; }
+        .hero-buttons { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        .btn-primary { background: linear-gradient(135deg, #E94560, #C62A47); color: white; padding: 14px 35px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: bold; }
+        .btn-secondary { background: transparent; border: 2px solid #C8D8E8; color: #C8D8E8; padding: 14px 35px; border-radius: 8px; text-decoration: none; font-size: 16px; }
+        .stats { display: flex; justify-content: center; gap: 60px; padding: 60px 20px; flex-wrap: wrap; }
+        .stat { text-align: center; }
+        .stat h2 { font-size: 42px; font-weight: 800; color: #E94560; }
+        .stat p { color: #8899AA; font-size: 14px; margin-top: 5px; }
+        .features { padding: 60px 40px; max-width: 1100px; margin: 0 auto; }
+        .features h2 { text-align: center; font-size: 32px; margin-bottom: 50px; }
+        .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; }
+        .feature-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 30px; text-align: center; }
+        .feature-card .icon { font-size: 40px; margin-bottom: 15px; }
+        .feature-card h3 { font-size: 18px; margin-bottom: 10px; color: #E94560; }
+        .feature-card p { color: #8899AA; font-size: 14px; line-height: 1.6; }
+        .cta { text-align: center; padding: 80px 20px; }
+        .cta h2 { font-size: 36px; margin-bottom: 15px; }
+        .cta p { color: #8899AA; margin-bottom: 30px; }
+        .footer { background: rgba(0,0,0,0.3); padding: 25px; text-align: center; color: #8899AA; font-size: 13px; border-top: 1px solid rgba(255,255,255,0.05); }
+        .flash-messages { padding: 10px 40px; }
+        .alert { padding: 12px 20px; border-radius: 8px; margin-bottom: 10px; font-size: 14px; }
+        .alert-success { background: rgba(46,204,113,0.2); border: 1px solid #2ecc71; color: #2ecc71; }
+        .alert-danger { background: rgba(231,76,60,0.2); border: 1px solid #e74c3c; color: #e74c3c; }
+        .alert-warning { background: rgba(241,196,15,0.2); border: 1px solid #f1c40f; color: #f1c40f; }
+        .alert-info { background: rgba(52,152,219,0.2); border: 1px solid #3498db; color: #3498db; }
+        @media(max-width:768px){ .features-grid{ grid-template-columns:1fr; } .hero h1{ font-size:32px; } .stats{ gap:30px; } }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">🛡 NIDS <span>System</span></div>
+        <div class="nav-links">
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('login') }}" class="btn-login">Login</a>
+            <a href="{{ url_for('register') }}" class="btn-register">Register</a>
+        </div>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="hero">
+        <div class="badge">🔒 Machine Learning Powered Security</div>
+        <h1>Network Intrusion<br><span>Detection System</span></h1>
+        <p>A machine learning-based system that monitors and analyses network traffic to detect malicious activity with 99.87% accuracy using Random Forest classification.</p>
+        <div class="hero-buttons">
+            <a href="{{ url_for('register') }}" class="btn-primary">🚀 Get Started</a>
+            <a href="{{ url_for('login') }}" class="btn-secondary">🔑 Login</a>
+        </div>
+    </div>
+
+    <div class="stats">
+        <div class="stat"><h2>99.87%</h2><p>Detection Accuracy</p></div>
+        <div class="stat"><h2>125,973</h2><p>Training Records</p></div>
+        <div class="stat"><h2>41</h2><p>Network Features</p></div>
+        <div class="stat"><h2>3</h2><p>ML Algorithms</p></div>
+    </div>
+
+    <div class="features">
+        <h2>System Features</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="icon">🤖</div>
+                <h3>Machine Learning</h3>
+                <p>Powered by Random Forest algorithm trained on 125,973 real network connection records from the NSL-KDD benchmark dataset.</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">⚡</div>
+                <h3>Real-time Detection</h3>
+                <p>Instantly analyses 41 network traffic features and returns a prediction with confidence score in milliseconds.</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">📊</div>
+                <h3>Detection History</h3>
+                <p>All network traffic analyses are saved to a database with timestamps so you can review past detections anytime.</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">👑</div>
+                <h3>Admin Dashboard</h3>
+                <p>Administrators can manage all users, view system-wide detection statistics, and monitor all network analyses.</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">🔐</div>
+                <h3>Secure Authentication</h3>
+                <p>User accounts are protected with bcrypt password hashing. Role-based access control for admin and regular users.</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">🗄️</div>
+                <h3>Database Storage</h3>
+                <p>All users and detection records are stored in a structured SQLite database with full query and history support.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="cta">
+        <h2>Ready to Secure Your Network?</h2>
+        <p>Create a free account and start analysing network traffic immediately.</p>
+        <a href="{{ url_for('register') }}" class="btn-primary">Create Account →</a>
+    </div>
+
+    <div class="footer">
+        <p>NIDS System | Priscillia Chika Inyamah | U22DLCS10477 | ABU Distance Learning Centre | 2026</p>
+        <p style="margin-top:5px;">Supervisor: Dr. Abdulrazaq | Department of Computer Science</p>
+    </div>
+</body>
+</html>
