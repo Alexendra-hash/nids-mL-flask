@@ -3,10 +3,12 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_bcrypt import Bcrypt
 from sqlalchemy.engine import URL
+from sqlalchemy import func
 from datetime import datetime
 import joblib
 import numpy as np
 from flask_mail import Mail, Message
+from scapy.all import sniff
 
 app = Flask(__name__)
 
@@ -38,6 +40,7 @@ login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'warning'
 
 model = joblib.load('nids_model.pkl')
+label_encoder = joblib.load('label_encoder.pkl')
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -50,16 +53,32 @@ class User(db.Model, UserMixin):
 
 class Detection(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    result = db.Column(db.String(20), nullable=False)
+
+    # Detection Result
+    result = db.Column(db.String(30), nullable=False)
+    attack_type = db.Column(db.String(50))
+    attack_category = db.Column(db.String(30))
+
     confidence = db.Column(db.Float, nullable=False)
+
+    # Network Information
+    protocol_type = db.Column(db.Float)
     src_bytes = db.Column(db.Float)
     dst_bytes = db.Column(db.Float)
+
+    source_ip = db.Column(db.String(50))
+    destination_ip = db.Column(db.String(50))
+
     count = db.Column(db.Float)
     serror_rate = db.Column(db.Float)
-    protocol_type = db.Column(db.Float)
+
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
+def packet_callback(packet):
+    print(packet.summary())
+    
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -141,8 +160,14 @@ def dashboard():
         return redirect(url_for('admin_dashboard'))
     detections = Detection.query.filter_by(user_id=current_user.id).order_by(Detection.timestamp.desc()).limit(10).all()
     total = Detection.query.filter_by(user_id=current_user.id).count()
-    attacks = Detection.query.filter_by(user_id=current_user.id, result='ATTACK').count()
-    normal = Detection.query.filter_by(user_id=current_user.id, result='NORMAL').count()
+    normal = Detection.query.filter_by(
+    user_id=current_user.id,
+    result='NORMAL'
+).count() 
+    attacks = Detection.query.filter(
+    Detection.user_id == current_user.id,
+    Detection.result != 'NORMAL'
+).count()
     return render_template('dashboard.html', detections=detections, total=total, attacks=attacks, normal=normal)
 
 @app.route('/admin')
@@ -151,14 +176,72 @@ def admin_dashboard():
     if current_user.role != 'admin':
         flash('Access denied!', 'danger')
         return redirect(url_for('dashboard'))
-    users = User.query.all()
-    total_detections = Detection.query.count()
-    total_attacks = Detection.query.filter_by(result='ATTACK').count()
-    total_normal = Detection.query.filter_by(result='NORMAL').count()
-    recent = Detection.query.order_by(Detection.timestamp.desc()).limit(10).all()
-    return render_template('admin.html', users=users, total_detections=total_detections,
-                         total_attacks=total_attacks, total_normal=total_normal, recent=recent)
 
+    # Users
+    users = User.query.all()
+    total_users = User.query.count()
+
+    # Detection statistics
+    total_detections = Detection.query.count()
+
+    total_normal = Detection.query.filter_by(
+        result='NORMAL'
+    ).count()
+
+    total_attacks = Detection.query.filter(
+        Detection.result != 'NORMAL'
+    ).count()
+
+    # Recent detections
+    recent = Detection.query.order_by(
+        Detection.timestamp.desc()
+    ).limit(10).all()
+
+    # Timeline chart
+    timeline_data = (
+        db.session.query(
+            func.date(Detection.timestamp),
+            func.count(Detection.id)
+        )
+        .group_by(func.date(Detection.timestamp))
+        .order_by(func.date(Detection.timestamp))
+        .all()
+    )
+
+    timeline_labels = [str(item[0]) for item in timeline_data]
+    timeline_counts = [item[1] for item in timeline_data]
+
+    # Attack Category Chart
+    category_data = (
+        db.session.query(
+            Detection.attack_category,
+            func.count(Detection.id)
+        )
+        .group_by(Detection.attack_category)
+        .all()
+    )
+
+    category_labels = [row[0] for row in category_data]
+    category_counts = [row[1] for row in category_data]
+
+    return render_template(
+        'admin.html',
+
+        users=users,
+        total_users=total_users,
+
+        total_detections=total_detections,
+        total_attacks=total_attacks,
+        total_normal=total_normal,
+
+        recent=recent,
+
+        timeline_labels=timeline_labels,
+        timeline_counts=timeline_counts,
+
+        category_labels=category_labels,
+        category_counts=category_counts
+    )
 @app.route('/admin/users')
 @login_required
 def manage_users():
@@ -183,6 +266,36 @@ def delete_user(user_id):
     db.session.commit()
     flash('User deleted successfully!', 'success')
     return redirect(url_for('manage_users'))
+
+ATTACK_CATEGORIES = {
+    "normal":"Normal",
+
+    "neptune":"DoS",
+    "smurf":"DoS",
+    "back":"DoS",
+    "teardrop":"DoS",
+    "pod":"DoS",
+    "land":"DoS",
+
+    "ipsweep":"Probe",
+    "portsweep":"Probe",
+    "nmap":"Probe",
+    "satan":"Probe",
+
+    "ftp_write":"R2L",
+    "guess_passwd":"R2L",
+    "imap":"R2L",
+    "multihop":"R2L",
+    "phf":"R2L",
+    "spy":"R2L",
+    "warezclient":"R2L",
+    "warezmaster":"R2L",
+
+    "buffer_overflow":"U2R",
+    "loadmodule":"U2R",
+    "perl":"U2R",
+    "rootkit":"U2R"
+}
 
 @app.route('/analyse', methods=['GET', 'POST'])
 @login_required
@@ -232,73 +345,166 @@ def analyse():
                 float(request.form['dst_host_rerror_rate']),
                 float(request.form['dst_host_srv_rerror_rate']),
             ]
+
             input_data = np.array([features])
+
             prediction = model.predict(input_data)[0]
             probability = model.predict_proba(input_data)[0]
-            if prediction == 0:
-                result = 'ATTACK'
-                confidence = round(probability[0] * 100, 2)
-                alert = 'danger'
+
+            confidence = round(max(probability) * 100, 2)
+
+            attack_name = label_encoder.inverse_transform([prediction])[0]
+
+
+            attack_categories = {
+                "normal": "Normal",
+                "neptune": "DoS",
+                "smurf": "DoS",
+                "teardrop": "DoS",
+                "back": "DoS",
+                "pod": "DoS",
+                "land": "DoS",
+
+                "ipsweep": "Probe",
+                "nmap": "Probe",
+                "portsweep": "Probe",
+                "satan": "Probe",
+
+                "ftp_write": "R2L",
+                "guess_passwd": "R2L",
+                "imap": "R2L",
+                "multihop": "R2L",
+                "phf": "R2L",
+                "spy": "R2L",
+                "warezclient": "R2L",
+                "warezmaster": "R2L",
+
+                "buffer_overflow": "U2R",
+                "loadmodule": "U2R",
+                "perl": "U2R",
+                "rootkit": "U2R"
+            }
+
+
+            attack_category = attack_categories.get(
+                attack_name.lower(),
+                "Unknown"
+            )
+
+
+            print("Prediction:", attack_name)
+            print("Category:", attack_category)
+            print("Confidence:", confidence)
+
+
+            if attack_name.lower() == "normal":
+                result = "NORMAL"
+                alert = "success"
+
+            else:
+                result = attack_name.upper()
+                alert = "danger"
 
                 msg = Message(
-                    subject='🚨 Network Intrusion Alert',
-                    recipients=['alexaobioha@gmail.com']
+                    subject="🚨 Network Intrusion Alert",
+                    recipients=["alexaobioha@gmail.com"]
                 )
 
                 msg.body = f"""
 NETWORK INTRUSION DETECTED
 
-Status: {result}
+Attack Type: {attack_name.upper()}
 Confidence: {confidence}%
 
 Time: {datetime.now()}
-
-Your Machine Learning Network Intrusion Detection System has detected suspicious network activity.
-
-Please log in to the dashboard immediately to investigate.
 """
 
                 mail.send(msg)
 
-            else:
-                result = 'NORMAL'
-                confidence = round(probability[1] * 100, 2)
-                alert = 'success'
+
+            source_ip = request.remote_addr
+            destination_ip = "Server"
+
             detection = Detection(
                 user_id=current_user.id,
                 result=result,
+                attack_type=attack_name.upper(),
+                attack_category=attack_category,
+
                 confidence=confidence,
+
+                protocol_type=features[1],
                 src_bytes=features[4],
                 dst_bytes=features[5],
+
+                source_ip=source_ip,
+                destination_ip=destination_ip,
+
                 count=features[22],
-                serror_rate=features[24],
-                protocol_type=features[1]
+                serror_rate=features[24]
             )
+
+
             db.session.add(detection)
             db.session.commit()
-            return render_template('analyse.html', result=result, confidence=confidence, alert=alert)
+
+
+            return render_template(
+                "analyse.html",
+                result=result,
+                confidence=confidence,
+                alert=alert,
+                attack_name=attack_name,
+                attack_category=attack_category
+            )
+
+
         except Exception as e:
+            print("ERROR:", str(e))
             flash(f'Error: {str(e)}', 'danger')
+            return render_template('analyse.html')
+
+
     return render_template('analyse.html')
 
 @app.route('/history')
 @login_required
 def history():
     if current_user.role == 'admin':
-        detections = Detection.query.order_by(Detection.timestamp.desc()).all()
+        detections = Detection.query.order_by(
+            Detection.timestamp.desc()
+        ).all()
     else:
-        detections = Detection.query.filter_by(user_id=current_user.id).order_by(Detection.timestamp.desc()).all()
+        detections = Detection.query.filter_by(
+            user_id=current_user.id
+        ).order_by(
+            Detection.timestamp.desc()
+        ).all()
+
     return render_template('history.html', detections=detections)
+
 
 with app.app_context():
     db.create_all()
+
     admin = User.query.filter_by(role='admin').first()
+
     if not admin:
         hashed_pw = bcrypt.generate_password_hash('admin123').decode('utf-8')
-        admin = User(username='admin', email='admin@nids.com', password=hashed_pw, role='admin')
+
+        admin = User(
+            username='admin',
+            email='admin@nids.com',
+            password=hashed_pw,
+            role='admin'
+        )
+
         db.session.add(admin)
         db.session.commit()
-        print('Default admin created!')
+
+        print("Default admin created!")
+
+
 @app.route('/test-email')
 def test_email():
     try:
@@ -317,9 +523,12 @@ This is a test email.
 """
 
         mail.send(msg)
+
         return "Email sent successfully!"
 
     except Exception as e:
         return f"Error: {str(e)}"
+
+
 if __name__ == '__main__':
     app.run(debug=True)

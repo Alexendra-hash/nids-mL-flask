@@ -84,11 +84,23 @@
         {% if result %}
         <div class="result-card result-{{ alert }}">
             <div class="result-icon">{{ '🚨' if alert == 'danger' else '✅' }}</div>
-            <div class="result-title">{{ '⚠️ ATTACK DETECTED' if result == 'ATTACK' else '✅ NORMAL TRAFFIC' }}</div>
+<div class="result-title">
+{% if alert == "danger" %}
+🚨 {{ result }}
+{% else %}
+✅ NORMAL TRAFFIC
+{% endif %}
+</div>
             <div class="result-confidence">Confidence: {{ confidence }}%</div>
             <div class="result-msg">
-                {{ 'Malicious network activity detected! Immediate action recommended.' if alert == 'danger' else 'Network traffic appears normal. No threats detected.' }}
-            </div>
+<div class="result-msg">
+{% if alert == "danger" %}
+Attack Type Detected: <strong>{{ result }}</strong><br>
+Immediate action recommended.
+{% else %}
+Network traffic appears normal. No threats detected.
+{% endif %}
+</div>
             <div class="saved-badge">💾 Result saved to your history</div>
         </div>
         {% endif %}
@@ -159,7 +171,7 @@
     <script>
     function loadAttack() {
         var fields = {
-            'duration':0,'protocol_type':1,'service':21,'flag':5,
+            'duration':0,'protocol_type':1,'service':49,'flag':5,
             'src_bytes':0,'dst_bytes':0,'land':0,'wrong_fragment':0,
             'urgent':0,'hot':0,'num_failed_logins':0,'logged_in':0,
             'num_compromised':0,'root_shell':0,'su_attempted':0,
